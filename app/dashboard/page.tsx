@@ -110,7 +110,7 @@ export default function DashboardPage() {
       })
       setTokenColors(colors)
 
-      // Inicializa tokens com histórico e avgPrice
+      // Enriquecer tokens com histórico e avgPrice
       const enrichedTokens = await Promise.all(
         tokensData.map(async token => {
           token.history = await fetchHistoricalPrices(token.symbol, chartPeriod)
@@ -154,11 +154,10 @@ export default function DashboardPage() {
 
   function updateChart(tokensData: TokenWithHistory[], period: PeriodOption) {
     if (!tokensData.length) return
-    const firstHistory = tokensData[0]?.history
-    if (!firstHistory) return
-
-    // Datas formatadas no client
-    const dates = firstHistory.map(h => new Date(h.timestamp).toLocaleDateString("pt-BR"))
+    const maxLength = Math.max(...tokensData.map(t => t.history?.length ?? 0))
+    const dates = Array.from({ length: maxLength }, (_, idx) =>
+      new Date(tokensData[0].history?.[idx]?.timestamp ?? Date.now()).toLocaleDateString("pt-BR")
+    )
 
     const data: ChartEntry[] = dates.map((date, idx) => {
       const entry: ChartEntry = { date, total: 0 }
@@ -191,7 +190,6 @@ export default function DashboardPage() {
     setTotalValue(tokensData.reduce((sum, t) => sum + (t.value || 0), 0))
   }
 
-  // Atualiza histórico quando muda o período
   useEffect(() => {
     if (!tokens.length) return
     const updateHistory = async () => {
@@ -230,7 +228,6 @@ export default function DashboardPage() {
 
         <WalletForm onSubmit={handleSubmit} />
 
-        {/* TOTAL + DESEMPENHO */}
         <div className="bg-gray-900 rounded-2xl p-4 sm:p-6 shadow-lg border border-gray-800 flex flex-col sm:flex-row items-center justify-center gap-4">
           <div className="text-center">
             <p className="text-gray-400 text-sm">Valor Total</p>
@@ -249,7 +246,6 @@ export default function DashboardPage() {
 
         {loading && <div className="text-center text-gray-400">Carregando carteira...</div>}
 
-        {/* GRÁFICO */}
         {chartData.length > 0 && (
           <div className="bg-gray-900 rounded-2xl p-4 sm:p-6 shadow-lg border border-gray-800">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-2">
@@ -272,11 +268,22 @@ export default function DashboardPage() {
                   <XAxis dataKey="date" stroke="#aaa" />
                   <YAxis stroke="#aaa" />
                   <Tooltip
-                    formatter={(value) => {
-                      const num = typeof value === "number" ? value : 0
-                      return `$${num.toFixed(2)}`
+                    content={({ active, payload, label }) => {
+                      if (active && payload && payload.length) {
+                        return (
+                          <div className="bg-gray-800 p-2 rounded shadow-lg text-white text-sm">
+                            <div className="font-semibold mb-1">Data: {label}</div>
+                            {payload.map((p) => (
+                              <div key={p.dataKey} className="flex justify-between">
+                                <span>{p.dataKey}</span>
+                                <span>${(p.value as number).toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )
+                      }
+                      return null
                     }}
-                    labelFormatter={(label) => `Data: ${label}`}
                   />
                   <Line type="monotone" dataKey="total" stroke="#4ade80" strokeWidth={3} dot={false} />
                   {tokens.map(token => (
@@ -295,7 +302,6 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* TABELA */}
         {tokens.length > 0 && (
           <div className="bg-gray-900 rounded-2xl p-4 sm:p-6 shadow-lg border border-gray-800 overflow-x-auto">
             <h3 className="text-lg font-semibold mb-2 sm:mb-4">Tokens</h3>
