@@ -119,7 +119,7 @@ setTotalValue(total)
         {tokens.length > 0 && (
           <div className="bg-gray-900 rounded-2xl p-6 shadow-lg border border-gray-800 overflow-x-auto">
             <h3 className="text-lg font-semibold mb-4">
-              Tokens com valor
+              Tokens
             </h3>
 
             <table className="w-full text-left">
