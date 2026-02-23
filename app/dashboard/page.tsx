@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useEffect, ReactNode } from "react"
+import { useState, useEffect } from "react"
 import WalletForm from "@/components/WalletForm"
-import { useRouter } from "next/navigation" // import do useRouter
+import { useRouter } from "next/navigation"
 import {
   LineChart,
   Line,
@@ -11,9 +11,7 @@ import {
   Tooltip,
   ResponsiveContainer,
   CartesianGrid,
-  TooltipProps,
 } from "recharts"
-import { NameType, ValueType } from "recharts/types/component/DefaultTooltipContent"
 
 type Transaction = {
   amount: number
@@ -56,8 +54,9 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(false)
   const [chartPeriod, setChartPeriod] = useState<PeriodOption>("7d")
   const [chartData, setChartData] = useState<ChartEntry[]>([])
+  const [tokenColors, setTokenColors] = useState<Record<string, string>>({})
   const router = useRouter()
-  
+
   const periods: PeriodOption[] = ["24h", "7d", "1m", "3m", "6m", "1y", "all"]
 
   const abbreviateNetwork = (network: string) => {
@@ -104,18 +103,28 @@ export default function DashboardPage() {
       const data = await res.json()
       const tokensData: TokenWithHistory[] = data.tokens || []
 
-      for (const token of tokensData) {
-        token.history = await fetchHistoricalPrices(token.symbol, chartPeriod)
-        token.transactions = [
-          { amount: token.balance * 0.5, price: token.price * 0.8, timestamp: Date.now() - 60 * 24 * 60 * 60 * 1000 },
-          { amount: token.balance * 0.5, price: token.price * 1.2, timestamp: Date.now() - 30 * 24 * 60 * 60 * 1000 },
-        ]
-        token.avgPrice = calculateAvgPrice(token.transactions)
-      }
+      // Gera cores fixas para os tokens
+      const colors: Record<string, string> = {}
+      tokensData.forEach(token => {
+        colors[token.symbol] = `#${Math.floor(Math.random() * 16777215).toString(16)}`
+      })
+      setTokenColors(colors)
 
-      setTokens(tokensData)
-      setTotalValue(tokensData.reduce((sum, t) => sum + (t.value || 0), 0))
-      updateChart(tokensData, chartPeriod)
+      // Inicializa tokens com histórico e avgPrice
+      const enrichedTokens = await Promise.all(
+        tokensData.map(async token => {
+          token.history = await fetchHistoricalPrices(token.symbol, chartPeriod)
+          token.transactions = [
+            { amount: token.balance * 0.5, price: token.price * 0.8, timestamp: Date.now() - 60 * 24 * 60 * 60 * 1000 },
+            { amount: token.balance * 0.5, price: token.price * 1.2, timestamp: Date.now() - 30 * 24 * 60 * 60 * 1000 },
+          ]
+          token.avgPrice = calculateAvgPrice(token.transactions)
+          return token
+        })
+      )
+
+      setTokens(enrichedTokens)
+      updateChart(enrichedTokens, chartPeriod)
     } catch (error) {
       console.error(error)
       setTokens([])
@@ -147,6 +156,8 @@ export default function DashboardPage() {
     if (!tokensData.length) return
     const firstHistory = tokensData[0]?.history
     if (!firstHistory) return
+
+    // Datas formatadas no client
     const dates = firstHistory.map(h => new Date(h.timestamp).toLocaleDateString("pt-BR"))
 
     const data: ChartEntry[] = dates.map((date, idx) => {
@@ -180,13 +191,18 @@ export default function DashboardPage() {
     setTotalValue(tokensData.reduce((sum, t) => sum + (t.value || 0), 0))
   }
 
+  // Atualiza histórico quando muda o período
   useEffect(() => {
     if (!tokens.length) return
     const updateHistory = async () => {
-      for (const token of tokens) {
-        token.history = await fetchHistoricalPrices(token.symbol, chartPeriod)
-      }
-      updateChart(tokens, chartPeriod)
+      const updatedTokens = await Promise.all(
+        tokens.map(async token => {
+          token.history = await fetchHistoricalPrices(token.symbol, chartPeriod)
+          return token
+        })
+      )
+      updateChart(updatedTokens, chartPeriod)
+      setTokens(updatedTokens)
     }
     updateHistory()
   }, [chartPeriod])
@@ -194,27 +210,23 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-gray-950 text-white p-4 sm:p-6">
       <div className="max-w-6xl mx-auto space-y-6 sm:space-y-8">
-        
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 mb-6">
-  <h1 className="text-2xl sm:text-3xl font-bold text-center">Portfolio Dashboard</h1>
-  <div className="flex gap-2">
-    {/* Botão Dashboard */}
-    <button
-      onClick={() => router.push("/dashboard")}
-      className="px-4 py-2 bg-green-500 hover:bg-green-600 rounded text-white font-semibold transition"
-    >
-      Dashboard
-    </button>
-
-    {/* Botão Mercado */}
-    <button
-      onClick={() => router.push("/mercado")}
-      className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded text-white font-semibold transition"
-    >
-      Mercado
-    </button>
-  </div>
-</div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-center">Portfolio Dashboard</h1>
+          <div className="flex gap-2">
+            <button
+              onClick={() => router.push("/dashboard")}
+              className="px-4 py-2 bg-green-500 hover:bg-green-600 rounded text-white font-semibold transition"
+            >
+              Dashboard
+            </button>
+            <button
+              onClick={() => router.push("/mercado")}
+              className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded text-white font-semibold transition"
+            >
+              Mercado
+            </button>
+          </div>
+        </div>
 
         <WalletForm onSubmit={handleSubmit} />
 
@@ -259,13 +271,13 @@ export default function DashboardPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#333" />
                   <XAxis dataKey="date" stroke="#aaa" />
                   <YAxis stroke="#aaa" />
-                 <Tooltip
-                      formatter={(value) => {
-                        const num = typeof value === "number" ? value : 0
-                        return `$${num.toFixed(2)}`
-                      }}
-                      labelFormatter={(label) => `Data: ${label}`}
-                    />
+                  <Tooltip
+                    formatter={(value) => {
+                      const num = typeof value === "number" ? value : 0
+                      return `$${num.toFixed(2)}`
+                    }}
+                    labelFormatter={(label) => `Data: ${label}`}
+                  />
                   <Line type="monotone" dataKey="total" stroke="#4ade80" strokeWidth={3} dot={false} />
                   {tokens.map(token => (
                     <Line
@@ -273,7 +285,7 @@ export default function DashboardPage() {
                       type="monotone"
                       dataKey={token.symbol}
                       strokeOpacity={0.5}
-                      stroke={`#${Math.floor(Math.random()*16777215).toString(16)}`} 
+                      stroke={tokenColors[token.symbol] || "#4ade80"}
                       dot={false}
                     />
                   ))}
