@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-
+import Link from "next/link"
 type Coin = {
   id: string
   name: string
@@ -36,7 +36,7 @@ export default function MercadoPage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white p-4 sm:p-6">
+    <div className="min-h-screen bg-gray-950 text-white p-4 sm:p-6 overflow-x-hidden">
       <div className="max-w-6xl mx-auto space-y-6 sm:space-y-8">
 
         {/* HEADER + BOTÕES */}
@@ -45,18 +45,12 @@ export default function MercadoPage() {
             Mercado Cripto
           </h1>
           <div className="flex gap-2">
-            <button
-              onClick={() => router.push("/dashboard")}
-              className="px-4 py-2 bg-green-500 hover:bg-green-600 rounded text-white font-semibold transition"
-            >
-              Dashboard
-            </button>
-            <button
-              onClick={() => router.push("/mercado")}
-              className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded text-white font-semibold transition"
-            >
-              Mercado
-            </button>
+           
+            <Link href="/dashboard">
+              <span className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded text-white font-semibold transition cursor-pointer">
+                Dashboard
+              </span>
+            </Link>
           </div>
         </div>
 

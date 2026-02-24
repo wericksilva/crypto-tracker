@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import WalletForm from "@/components/WalletForm"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import {
   LineChart,
   Line,
@@ -123,18 +124,11 @@ export default function DashboardPage() {
       <div className="max-w-6xl mx-auto space-y-6 sm:space-y-8">
 
         <div className="flex gap-2">
-            <button
-              onClick={() => router.push("/dashboard")}
-              className="px-4 py-2 bg-green-500 hover:bg-green-600 rounded text-white font-semibold transition"
-            >
-              Dashboard
-            </button>
-            <button
-              onClick={() => router.push("/mercado")}
-              className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded text-white font-semibold transition"
-            >
-              Mercado
-            </button>
+            <Link href="/mercado">
+              <span className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded text-white font-semibold transition cursor-pointer">
+                Mercado
+              </span>
+            </Link>
           </div>
 
 
